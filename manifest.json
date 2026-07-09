@@ -3,9 +3,9 @@
   "targets": [
     {
       "target": 0,
-      "name": "Opera 1",
+      "name": "Opera 0",
       "model": "models/opera1.glb",
-      "scale": 0.75,
+      "scale": 2.3,
       "position": [
         0,
         0.05,
@@ -13,11 +13,47 @@
       ],
       "rotation": [
         30,
-        -40,
+        -25,
         0
       ],
       "amb": 1.1,
-      "dir": 0.8
+      "dir": 0.4
+    },
+    {
+      "target": 1,
+      "name": "Opera 1",
+      "model": "models/opera1.glb",
+      "scale": 2.3,
+      "position": [
+        0,
+        0.05,
+        0
+      ],
+      "rotation": [
+        30,
+        -25,
+        0
+      ],
+      "amb": 1.1,
+      "dir": 0.4
+    },
+    {
+      "target": 2,
+      "name": "Opera 2",
+      "model": "models/opera1.glb",
+      "scale": 2.3,
+      "position": [
+        0,
+        0.05,
+        0
+      ],
+      "rotation": [
+        30,
+        -25,
+        0
+      ],
+      "amb": 1.1,
+      "dir": 0.4
     }
   ]
 }
