@@ -1,4 +1,4 @@
-# AR viewer stile Artivive — image tracking
+# AR viewer  — image tracking
 
 Il 3D appare **ancorato sopra l'immagine-opera** e la segue (modo B).
 Tutto statico: nessun backend. Solo tu carichi/modifichi i contenuti; gli utenti aprono un link e guardano.
