@@ -1,0 +1,15 @@
+{
+  "mind": "https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind",
+  "targets": [
+    {
+      "target": 0,
+      "name": "Demo (immagine card MindAR)",
+      "model": "https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/softmind/scene.gltf",
+      "scale": 1.0,
+      "position": [0, 0, 0],
+      "rotation": [0, 0, 0],
+      "amb": 1.0,
+      "dir": 0.8
+    }
+  ]
+}

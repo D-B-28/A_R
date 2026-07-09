@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor — AR Object Linker (image tracking)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/OrbitControls.js"></script>
+<style>
+  :root{ --ink:#12181b; --paper:#eef1ee; --accent:#2f6f5e; --accent-2:#c96a3c; --line:#c7cec8; }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI', system-ui, sans-serif;background:var(--paper);color:var(--ink);}
+  h1{font-size:1.25rem;margin:0;padding:18px 16px 4px;}
+  p.sub{margin:0 0 16px;padding:0 16px;color:#4d5852;font-size:.88rem;}
+  .layout{display:flex;flex-wrap:wrap;gap:20px;padding:0 16px 40px;max-width:1100px;margin:0 auto;}
+  .previewCol{flex:1 1 380px;min-width:300px;}
+  .formCol{flex:1 1 340px;min-width:280px;}
+  #dropzone{position:relative;width:100%;aspect-ratio:1/1;background:#10201b;border:2px dashed #4b6a5f;
+    border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+  #dropzone.dragover{border-color:var(--accent-2);background:#182f27;}
+  #dropzone canvas{position:absolute;inset:0;width:100%;height:100%;}
+  #dropHint{color:#a9c2b8;font-size:.9rem;text-align:center;padding:20px;pointer-events:none;z-index:2;}
+  #fileInput{display:none;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:20px;}
+  label{display:block;font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:#556;margin:14px 0 6px;}
+  label:first-of-type{margin-top:0;}
+  input[type=text],input[type=number]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:6px;font-size:1rem;background:#fbfbfa;}
+  input[type=range]{width:100%;}
+  .rangeRow{display:flex;align-items:center;gap:10px;}
+  .rangeRow span{min-width:52px;text-align:right;color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums;font-size:.9rem;}
+  .two{display:flex;gap:12px;}
+  .two>div{flex:1;}
+  button{margin-top:20px;width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:1rem;font-weight:600;cursor:pointer;}
+  button.sec{background:var(--accent-2);}
+  button:disabled{background:#9aa8a2;cursor:not-allowed;}
+  .note{font-size:.78rem;color:#7a847e;margin-top:6px;line-height:1.4;}
+  #out{max-width:1100px;margin:0 auto;padding:0 16px 40px;}
+  pre{background:#0f1a16;color:#cfe6dc;padding:16px;border-radius:10px;overflow:auto;font-size:.82rem;line-height:1.5;}
+  .rowbtns{display:flex;gap:12px;}
+  .empty{color:#7a847e;font-size:.9rem;}
+</style>
+</head>
+<body>
+
+<h1>Editor modelli 3D — image tracking</h1>
+<p class="sub">Carica un .glb, sistemalo sopra il marker di riferimento, aggiungilo al manifest. Alla fine scarichi il <b>manifest.json</b> da mettere online.</p>
+
+<div class="layout">
+  <div class="previewCol">
+    <div id="dropzone">
+      <div id="dropHint">Trascina qui un file .glb<br>(o tocca per scegliere)</div>
+      <input type="file" id="fileInput" accept=".glb,.gltf">
+    </div>
+    <p class="note">Il quadrato chiaro rappresenta l'immagine-opera (il marker). Regola il modello finché non è posizionato come lo vuoi vedere in AR.</p>
+  </div>
+
+  <div class="formCol">
+    <div class="card">
+      <label for="target">Indice target (ordine di compilazione del .mind)</label>
+      <input type="number" id="target" value="0" min="0" step="1">
+      <div class="note">È la posizione dell'immagine quando compili il .mind (la 1ª foto = 0, la 2ª = 1, …).</div>
+
+      <label for="path">Percorso del .glb sul server</label>
+      <input type="text" id="path" placeholder="models/opera1.glb">
+
+      <label for="name">Etichetta</label>
+      <input type="text" id="name" placeholder="es. Sedia soggiorno" maxlength="40">
+
+      <label>Scala <span id="scaleVal">1.0x</span></label>
+      <div class="rangeRow"><input type="range" id="scale" min="0.1" max="4" step="0.05" value="1"></div>
+
+      <label>Altezza sopra il marker <span id="posYVal">0.00</span></label>
+      <div class="rangeRow"><input type="range" id="posY" min="-1" max="2" step="0.05" value="0"></div>
+
+      <div class="two">
+        <div>
+          <label>Rot. X <span id="rotXVal">0°</span></label>
+          <div class="rangeRow"><input type="range" id="rotX" min="-180" max="180" step="5" value="0"></div>
+        </div>
+        <div>
+          <label>Rot. Y <span id="rotYVal">0°</span></label>
+          <div class="rangeRow"><input type="range" id="rotY" min="-180" max="180" step="5" value="0"></div>
+        </div>
+      </div>
+
+      <label>Luce ambientale <span id="ambVal">1.0</span></label>
+      <div class="rangeRow"><input type="range" id="ambient" min="0" max="2" step="0.1" value="1"></div>
+
+      <label>Luce direzionale <span id="dirVal">0.8</span></label>
+      <div class="rangeRow"><input type="range" id="directional" min="0" max="2" step="0.1" value="0.8"></div>
+
+      <button id="add" disabled>Carica prima un modello</button>
+    </div>
+  </div>
+</div>
+
+<div id="out">
+  <div class="card">
+    <label style="margin-top:0">manifest.json</label>
+    <pre id="json">{ "mind": "targets.mind", "targets": [] }</pre>
+    <div class="rowbtns">
+      <button class="sec" id="copy" style="margin-top:0">Copia</button>
+      <button id="download" style="margin-top:0">Scarica manifest.json</button>
+    </div>
+    <p class="note" id="listInfo">Nessuna opera aggiunta. Il campo "mind" punta a targets.mind (il file che ottieni compilando le tue immagini).</p>
+  </div>
+</div>
+
+<script>
+// ---- scena di anteprima ----
+const dropzone = document.getElementById('dropzone');
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setPixelRatio(window.devicePixelRatio || 1);
+dropzone.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100);
+camera.position.set(0, 1.1, 2.2);
+
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+scene.add(ambientLight);
+const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+dirLight.position.set(1, 1, 2);
+scene.add(dirLight);
+
+// marker di riferimento: un piano 1x1 sul piano XY (come vede MindAR l'immagine)
+const markerGeo = new THREE.PlaneGeometry(1, 1);
+const markerMat = new THREE.MeshBasicMaterial({ color:0xd9e6df, transparent:true, opacity:0.9, side:THREE.DoubleSide });
+const marker = new THREE.Mesh(markerGeo, markerMat);
+scene.add(marker);
+const grid = new THREE.GridHelper(1, 8, 0x8fb0a3, 0xb9cdc4);
+grid.rotation.x = Math.PI/2;   // sul piano del marker
+grid.position.z = 0.001;
+scene.add(grid);
+
+const controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.3, 0);
+controls.enableDamping = true;
+
+function resizePreview(){
+  const size = dropzone.clientWidth;
+  renderer.setSize(size, size);
+  camera.aspect = 1; camera.updateProjectionMatrix();
+}
+resizePreview();
+window.addEventListener('resize', resizePreview);
+
+let modelWrap = null;   // gruppo che riceve scala/rotazione/posizione dai controlli
+const loader = new THREE.GLTFLoader();
+
+function loadModel(file){
+  const url = URL.createObjectURL(file);
+  loader.load(url, gltf => {
+    if (modelWrap) scene.remove(modelWrap);
+    const obj = gltf.scene;
+    // normalizza come fa il viewer: raggio ~0.5 = mezza larghezza marker
+    const box = new THREE.Box3().setFromObject(obj);
+    const sphere = box.getBoundingSphere(new THREE.Sphere());
+    const s = 0.5 / (sphere.radius || 1);
+    obj.scale.setScalar(s);
+    const center = box.getCenter(new THREE.Vector3()).multiplyScalar(s);
+    obj.position.sub(center);
+
+    modelWrap = new THREE.Group();
+    modelWrap.add(obj);
+    scene.add(modelWrap);
+    applyControls();
+
+    document.getElementById('dropHint').style.display = 'none';
+    const btn = document.getElementById('add');
+    btn.disabled = false; btn.textContent = 'Aggiungi al manifest';
+    if (!document.getElementById('path').value)
+      document.getElementById('path').value = 'models/' + file.name;
+  }, undefined, err => {
+    alert('Non sono riuscito a leggere questo file come .glb/.gltf valido.');
+    console.error(err);
+  });
+}
+
+function val(id){ return parseFloat(document.getElementById(id).value); }
+const rad = d => d * Math.PI / 180;
+
+function applyControls(){
+  if (!modelWrap) return;
+  modelWrap.scale.setScalar(val('scale'));
+  modelWrap.position.set(0, val('posY'), 0);
+  modelWrap.rotation.set(rad(val('rotX')), rad(val('rotY')), 0);
+  ambientLight.intensity = val('ambient');
+  dirLight.intensity = val('directional');
+}
+
+const bind = [
+  ['scale','scaleVal', v => v.toFixed(1)+'x'],
+  ['posY','posYVal',   v => v.toFixed(2)],
+  ['rotX','rotXVal',   v => Math.round(v)+'°'],
+  ['rotY','rotYVal',   v => Math.round(v)+'°'],
+  ['ambient','ambVal', v => v.toFixed(1)],
+  ['directional','dirVal', v => v.toFixed(1)],
+];
+bind.forEach(([id,out,fmt]) => {
+  document.getElementById(id).addEventListener('input', () => {
+    applyControls();
+    document.getElementById(out).textContent = fmt(val(id));
+  });
+});
+
+(function animate(){ requestAnimationFrame(animate); controls.update(); renderer.render(scene, camera); })();
+
+// ---- drag & drop ----
+['dragenter','dragover'].forEach(e => dropzone.addEventListener(e, ev => { ev.preventDefault(); dropzone.classList.add('dragover'); }));
+['dragleave','drop'].forEach(e => dropzone.addEventListener(e, ev => { ev.preventDefault(); dropzone.classList.remove('dragover'); }));
+dropzone.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) loadModel(f); });
+dropzone.addEventListener('click', () => document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', e => { if (e.target.files[0]) loadModel(e.target.files[0]); });
+
+// ---- manifest ----
+const targets = [];
+function renderJson(){
+  const obj = { mind: 'targets.mind', targets };
+  document.getElementById('json').textContent = JSON.stringify(obj, null, 2);
+  document.getElementById('listInfo').textContent = targets.length
+    ? targets.length + ' opera/e nel manifest.'
+    : 'Nessuna opera aggiunta.';
+}
+
+document.getElementById('add').addEventListener('click', () => {
+  const path = document.getElementById('path').value.trim();
+  if (!path) { alert('Indica il percorso del .glb sul server.'); return; }
+  const entry = {
+    target: parseInt(document.getElementById('target').value, 10) || 0,
+    name: document.getElementById('name').value.trim() || ('Opera ' + document.getElementById('target').value),
+    model: path,
+    scale: +val('scale').toFixed(2),
+    position: [0, +val('posY').toFixed(2), 0],
+    rotation: [Math.round(val('rotX')), Math.round(val('rotY')), 0],
+    amb: +val('ambient').toFixed(1),
+    dir: +val('directional').toFixed(1)
+  };
+  // sostituisci se esiste già lo stesso indice target
+  const i = targets.findIndex(t => t.target === entry.target);
+  if (i >= 0) targets[i] = entry; else targets.push(entry);
+  targets.sort((a,b) => a.target - b.target);
+  renderJson();
+  // prepara il prossimo indice
+  document.getElementById('target').value = entry.target + 1;
+});
+
+document.getElementById('copy').addEventListener('click', () => {
+  navigator.clipboard.writeText(document.getElementById('json').textContent)
+    .then(() => { const b = document.getElementById('copy'); b.textContent = 'Copiato!'; setTimeout(() => b.textContent = 'Copia', 1200); });
+});
+document.getElementById('download').addEventListener('click', () => {
+  const blob = new Blob([document.getElementById('json').textContent], { type:'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = 'manifest.json'; a.click();
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<title>AR Viewer — inquadra l'opera</title>
+<script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+<style>
+  html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden;
+    background:#000; font-family:system-ui, sans-serif; }
+  #overlay { position:fixed; inset:0; z-index:10; pointer-events:none; }
+  #status {
+    position:fixed; left:0; right:0; bottom:0;
+    padding:16px 20px calc(20px + env(safe-area-inset-bottom));
+    background:linear-gradient(transparent, rgba(0,0,0,.65));
+    color:#fff; font-size:.95rem; text-align:center;
+  }
+  #status b { color:#ffd7a8; }
+  #startBtn {
+    position:fixed; inset:0; margin:auto; width:220px; height:56px;
+    border-radius:999px; border:none; background:#c96a3c; color:#fff;
+    font-size:1.05rem; font-weight:600; pointer-events:auto; cursor:pointer;
+  }
+  #startBtn:disabled { background:#9aa8a2; }
+  #errBox {
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(0,0,0,.85); color:#fff; padding:30px; text-align:center;
+    font-size:.95rem; line-height:1.5; pointer-events:auto;
+  }
+  /* hide A-Frame default VR button just in case */
+  .a-enter-vr, .a-enter-ar { display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="overlay">
+  <div id="status">Tocca per avviare la fotocamera</div>
+</div>
+<button id="startBtn" disabled>Caricamento…</button>
+<div id="errBox"></div>
+
+<script>
+// ---- fallback demo config (funziona anche aprendo il file senza manifest.json) ----
+const DEFAULT_CFG = {
+  mind: "https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind",
+  targets: [{
+    target: 0,
+    name: "Demo (immagine card MindAR)",
+    model: "https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/softmind/scene.gltf",
+    scale: 1.0,
+    position: [0, 0, 0],
+    rotation: [0, 0, 0],
+    amb: 1.0,
+    dir: 0.8
+  }]
+};
+
+const statusEl = document.getElementById('status');
+const startBtn = document.getElementById('startBtn');
+const errBox   = document.getElementById('errBox');
+
+function showErr(msg){ errBox.style.display = 'flex'; errBox.textContent = msg; }
+
+// ---- A-Frame component: normalizza ogni modello alla dimensione del marker ----
+// così "scala 1" ≈ larghezza dell'immagine, a prescindere dalle unità del .glb
+AFRAME.registerComponent('fit-marker', {
+  init: function () {
+    this.el.addEventListener('model-loaded', () => {
+      const obj = this.el.getObject3D('mesh');
+      if (!obj) return;
+      const box = new THREE.Box3().setFromObject(obj);
+      const sphere = box.getBoundingSphere(new THREE.Sphere());
+      const s = 0.5 / (sphere.radius || 1);      // raggio ~0.5 = mezza larghezza marker
+      obj.scale.multiplyScalar(s);
+      const center = box.getCenter(new THREE.Vector3()).multiplyScalar(s);
+      obj.position.sub(center);
+    });
+  }
+});
+
+async function loadConfig() {
+  try {
+    const res = await fetch('manifest.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } catch (e) {
+    console.warn('manifest.json non trovato, uso la demo integrata:', e.message);
+    return DEFAULT_CFG;
+  }
+}
+
+function buildScene(cfg) {
+  const scene = document.createElement('a-scene');
+  scene.setAttribute('mindar-image',
+    `imageTargetSrc: ${cfg.mind}; autoStart: false; uiScanning: no; uiLoading: no; uiError: no; ` +
+    `maxTrack: 1; filterMinCF: 0.0001; filterBeta: 0.005`);
+  scene.setAttribute('color-space', 'sRGB');
+  scene.setAttribute('renderer', 'colorManagement: true');
+  scene.setAttribute('vr-mode-ui', 'enabled: false');
+  scene.setAttribute('device-orientation-permission-ui', 'enabled: false');
+
+  const cam = document.createElement('a-camera');
+  cam.setAttribute('position', '0 0 0');
+  cam.setAttribute('look-controls', 'enabled: false');
+  scene.appendChild(cam);
+
+  // luci globali (l'intensità si aggiorna in base all'opera inquadrata)
+  const amb = document.createElement('a-light');
+  amb.setAttribute('type', 'ambient');
+  amb.setAttribute('color', '#ffffff');
+  amb.setAttribute('intensity', '1.0');
+  scene.appendChild(amb);
+
+  const dir = document.createElement('a-light');
+  dir.setAttribute('type', 'directional');
+  dir.setAttribute('color', '#ffffff');
+  dir.setAttribute('intensity', '0.8');
+  dir.setAttribute('position', '1 1 2');
+  scene.appendChild(dir);
+
+  (cfg.targets || []).forEach(t => {
+    const anchor = document.createElement('a-entity');
+    anchor.setAttribute('mindar-image-target', `targetIndex: ${t.target}`);
+
+    const model = document.createElement('a-entity');
+    model.setAttribute('gltf-model', t.model);
+    model.setAttribute('fit-marker', '');
+    const p = t.position || [0, 0, 0];
+    const r = t.rotation || [0, 0, 0];
+    const sc = (t.scale !== undefined) ? t.scale : 1;
+    model.setAttribute('position', `${p[0]} ${p[1]} ${p[2]}`);
+    model.setAttribute('rotation', `${r[0]} ${r[1]} ${r[2]}`);
+    model.setAttribute('scale', `${sc} ${sc} ${sc}`);
+    anchor.appendChild(model);
+
+    anchor.addEventListener('targetFound', () => {
+      statusEl.innerHTML = 'Trovato: <b>' + (t.name || ('opera ' + t.target)) + '</b>';
+      if (t.amb !== undefined) amb.setAttribute('intensity', t.amb);
+      if (t.dir !== undefined) dir.setAttribute('intensity', t.dir);
+    });
+    anchor.addEventListener('targetLost', () => {
+      statusEl.innerHTML = 'Inquadra un’opera';
+    });
+
+    scene.appendChild(anchor);
+  });
+
+  document.body.appendChild(scene);
+  return scene;
+}
+
+(async function init() {
+  const cfg = await loadConfig();
+  const scene = buildScene(cfg);
+
+  const onReady = () => {
+    startBtn.disabled = false;
+    startBtn.textContent = 'Avvia fotocamera';
+  };
+  if (scene.hasLoaded) onReady();
+  else scene.addEventListener('loaded', onReady);
+
+  startBtn.addEventListener('click', async () => {
+    const sys = scene.systems['mindar-image-system'];
+    if (!sys) { showErr('Sistema AR non pronto, ricarica la pagina.'); return; }
+    try {
+      startBtn.style.display = 'none';
+      statusEl.innerHTML = 'Inquadra un’opera';
+      await sys.start();
+    } catch (err) {
+      showErr('Impossibile accedere alla fotocamera: ' + err.message +
+        '. Apri questa pagina in HTTPS e concedi il permesso alla fotocamera.');
+    }
+  });
+})();
+</script>
+
+</body>
+</html>
