@@ -21,12 +21,13 @@
     position:fixed; inset:0; margin:auto; width:220px; height:56px;
     border-radius:999px; border:none; background:#c96a3c; color:#fff;
     font-size:1.05rem; font-weight:600; pointer-events:auto; cursor:pointer;
+    z-index:100;
   }
   #startBtn:disabled { background:#9aa8a2; }
   #errBox {
     position:fixed; inset:0; display:none; align-items:center; justify-content:center;
     background:rgba(0,0,0,.85); color:#fff; padding:30px; text-align:center;
-    font-size:.95rem; line-height:1.5; pointer-events:auto;
+    font-size:.95rem; line-height:1.5; pointer-events:auto; z-index:200;
   }
   /* hide A-Frame default VR button just in case */
   .a-enter-vr, .a-enter-ar { display:none !important; }
