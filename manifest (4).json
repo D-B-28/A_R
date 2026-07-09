@@ -1,0 +1,23 @@
+{
+  "mind": "targets.mind",
+  "targets": [
+    {
+      "target": 1,
+      "name": "Opera 1",
+      "model": "models/opera1.glb",
+      "scale": 0.75,
+      "position": [
+        0,
+        0.05,
+        0
+      ],
+      "rotation": [
+        30,
+        -40,
+        0
+      ],
+      "amb": 1.1,
+      "dir": 0.8
+    }
+  ]
+}
