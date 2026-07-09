@@ -2,7 +2,7 @@
   "mind": "targets.mind",
   "targets": [
     {
-      "target": 1,
+      "target": 0,
       "name": "Opera 1",
       "model": "models/opera1.glb",
       "scale": 0.75,
