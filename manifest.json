@@ -1,10 +1,10 @@
 {
-  "mind": "https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind",
+  "mind": "targets.mind",
   "targets": [
     {
       "target": 0,
-      "name": "Demo (immagine card MindAR)",
-      "model": "https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/softmind/scene.gltf",
+      "name": "Opera 1",
+      "model": "models/opera1.glb",
       "scale": 1.0,
       "position": [0, 0, 0],
       "rotation": [0, 0, 0],
